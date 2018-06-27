@@ -1,0 +1,62 @@
+Config { font = "xft:inconsolata:size=10:antialias=true"
+, bgColor = "black"
+, fgColor = "grey"
+, position = Bottom
+, lowerOnStart = False
+, allDesktops = True
+, commands = [ Run Weather "KLGA" ["-t","<tempF>F <skyCondition>","-L","40","-H","75","--normal","green","--high","red","--low","lightblue"] 36000
+             , Run Network "enp0s31f6" [
+	     				 "-L","100000"
+					,"-H","1000000"
+					,"--low","green"
+					,"--normal","yellow"
+					,"--high","red"
+					] 10
+             , Run Network "wlp58s0" [
+	     				 "-L","100000" --100KB
+					,"-H","1000000" --1MB
+					,"--low","green"
+					,"--normal","green"
+					,"--high","red"
+					] 10
+
+             , Run Cpu ["-L","3","-H","50","--normal","green","--high","red"] 10
+             , Run Memory ["-t","Mem: <usedratio>%"] 10
+             , Run Swap [ ] 10
+             , Run BatteryN ["BAT0"]
+              ["-t", "<acstatus><watts> (<left>%)",
+               "-L", "10", "-H", "80", "-p", "3",
+               "--", "-O", "<fc=green>On</fc> - ", "-i", "",
+               "-L", "-15", "-H", "-5",
+               "-l", "red", "-m", "blue", "-h", "green"]
+              600
+              "bat0"
+             , Run BatteryN ["BAT1"]
+              ["-t", "<acstatus><watts> (<left>%)",
+               "-L", "10", "-H", "80", "-p", "3",
+               "--", "-O", "<fc=green>On</fc> - ", "-i", "",
+               "-L", "-15", "-H", "-5",
+               "-l", "red", "-m", "blue", "-h", "green"]
+              600
+              "bat1"
+             , Run Date "%a %b %_d %Y %H:%M:%S" "date" 10
+	     , Run DiskIO [("sda2", "<total>")] [] 10
+             , Run XMonadLog
+             , Run Com "/usr/local/bin/trayer-width-to-spaces" [] "trayer" 10
+	     , Run MultiCpu      [ "--template" , "Cpu: <total0>%|<total1>%|<total2>%|<total3>%"
+                             , "--Low"      , "50"         -- units: %
+                             , "--High"     , "85"         -- units: %
+                             , "--low"      , "green"
+                             , "--normal"   , "orange"
+                             , "--high"     , "red"
+                             ] 10
+--             ,Run BufferedPipeReader "bpr"
+--                [ ( 0, False, "/tmp/xmobar_window")
+--		   ,( 55,  False, "/tmp/xmobar_status"  ) 
+--		 ]
+
+             ]
+, sepChar = "%"
+, alignSep = "}{"
+, template = "%XMonadLog% }{ %enp0s31f6% %wlp58s0% | %multicpu% %memory% Disk: %diskio% | <fc=#ee9a00>%date%</fc>%trayer%"
+}
