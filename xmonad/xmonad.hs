@@ -1,71 +1,54 @@
-import XMonad hiding ( (|||) )
+import XMonad
 import XMonad.Config.Xfce
-import qualified XMonad.StackSet as W
 import XMonad.Util.EZConfig
-import XMonad.Util.NamedWindows
-import XMonad.Util.Run
-import XMonad.Util.Loggers
-import XMonad.Util.SpawnOnce
-import XMonad.Config.Desktop
+import XMonad.Util.NamedScratchpad
+import XMonad.Util.Scratchpad
+import Text.Printf (printf)
 
-import XMonad.Layout.Circle
-import XMonad.Layout.NoBorders
-import XMonad.Layout.ResizableTile
-import XMonad.Layout.PerWorkspace
-import XMonad.Layout.Fullscreen
-import XMonad.Layout.IM
-import XMonad.Layout.FixedColumn
-import XMonad.Layout.Grid
-import XMonad.Layout.Magnifier
-import XMonad.Layout.LimitWindows
-import XMonad.Layout.Minimize
-import XMonad.Layout.Reflect
-import XMonad.Layout.LayoutScreens
-import XMonad.Layout.TwoPane
+import qualified XMonad.StackSet as W
+import qualified XMonad.Layout.BoringWindows as BW
 
-
-import XMonad.Layout.DragPane
-import XMonad.Layout.LayoutCombinators
-import XMonad.Layout.Tabbed
-import XMonad.Layout.TrackFloating
-import XMonad.Layout.SimplestFloat
-
+import XMonad.Actions.Minimize
 import XMonad.Actions.UpdatePointer
---import XMonad.Actions.SwapWorkspaces
-import XMonad.Actions.GridSelect
 import XMonad.Actions.WorkspaceNames
-import XMonad.Actions.CopyWindow
 
-import XMonad.Hooks.DynamicLog
+import XMonad.Hooks.DynamicLog --used to update xmobar
 import XMonad.Hooks.ManageDocks
 import XMonad.Hooks.ManageHelpers
-import XMonad.Hooks.SetWMName
-import XMonad.Hooks.UrgencyHook
-import XMonad.Hooks.Place
+import XMonad.Hooks.SetWMName -- fixes java window issue
+import XMonad.Hooks.UrgencyHook --used to update xmobar
 
-myWorkspaces = ["1:www","2:mail","3:shell","4:vm","5:chat","6:grid","7:float","8:tabbed","9:graphics"]
+import XMonad.Layout.Circle
+import XMonad.Layout.Gaps
+import XMonad.Layout.BorderResize
+import XMonad.Layout.Fullscreen
+import XMonad.Layout.Maximize
+import XMonad.Layout.Minimize
+import XMonad.Layout.MultiToggle
+import XMonad.Layout.MultiToggle.Instances
+import XMonad.Layout.NoBorders -- smartBorders
+import XMonad.Layout.PerWorkspace
+import XMonad.Layout.ResizableTile
+import XMonad.Layout.Spacing
+import XMonad.Layout.Tabbed
+import XMonad.Layout.ThreeColumns
 
 myManageHook = (composeAll . concat $
     [ [resource     =? r            --> doIgnore            |   r   <- myIgnores] -- ignore desktop
-    , [className    =? c            --> doShift  "2:mail"   |   c   <- myMail   ] -- move mail to mail 
-    , [className    =? c            --> doShift  "4:vm"   |   c   <- myVirtual  ] -- move vbox and kvm to vm
-    , [className    =? c            --> doShift  "5:chat"   |   c   <- myChats  ] -- move chats and ims to chats
-    , [name    =? n            --> doShift  "8:tabbed" <+> doF W.focusDown  |   n   <- myGames  ] -- move games to games
     , [className    =? "Gimp"           --> doShift  "9:graphics"  ] -- move graphical programs to graphics
     , [role    =? "gimp-toolbox"  <||> role =? "gimp-image-window"           --> unfloat  ] -- flatten certain gimp windows
     , [className    =? c            --> doFloat             |   c   <- myFloats ] -- float my floats
     , [className    =? c            --> doCenterFloat       |   c   <- myCenterClassNames  ] -- float my classnames
+    , [className    =? "mpv"        --> toprightFloat ]
     , [name         =? n            --> doCenterFloat       |   n   <- myCenterNames  ] -- float my names
     , [name         =? n            --> doFloat             |   n   <- myNames  ] -- float my names
     , [role         =? r            --> resizeMiddleFloat       |   r   <- myRoles  ] -- float my roles
     , [isDialog                     --> doCenterFloat                           ] 
-    , [isFullscreen                 --> (doF W.focusDown <+> doFullFloat)          ] -- YouTube fullscreen fix
-    --, [className    =? c            --> placeHook myPlacement             |   c   <- myGames ] -- float my floats
     ])
 
     where
         unfloat = ask >>= doF . W.sink
-
+        toprightFloat = doRectFloat $ W.RationalRect (3/4) 0 (1/4) (1/4)
 	resizeMiddleFloat = doRectFloat $ W.RationalRect 0.1 0.25 0.8 0.5
 
         role      = stringProperty "WM_WINDOW_ROLE"
@@ -73,100 +56,75 @@ myManageHook = (composeAll . concat $
 
         -- classnames
         myFloats  = ["MuPDF","Wine"]
-	myVirtual = ["VirtualBox","Virt-manager"]
-        myMail    = ["Thunderbird","Mail","Calendar"]
-        myChats   = ["Pidgin","Skype","Slack","Rocket.Chat+"]
 	myCenterClassNames = ["Xscreensaver-demo"]
-	myGames = ["Steam"]
 
         -- resources
-        myIgnores = ["desktop","desktop_window","notify-osd","stalonetray","trayer","xfce4-notifyd","Xfce4-notifyd","Xfdesktop"]
+        myIgnores = ["desktop","desktop_window","notify-osd","stalonetray","trayer","xfce4-notifyd","Xfce4-notifyd","Xfdesktop","dzen2","netflix"]
        -- names
         myCenterNames = ["Options"]
         myNames   = ["Oracle VM VirtualBox Manager","Virtual Machine Manager","cacaview","Guake!"]
         --roles
         myRoles   = ["Preferences","GtkFileChooserDialog"]
-
-myLogHook = workspaceNamesPP xmobarPP{ppUrgent = xmobarColor "purple" "" . wrap "<" ">"} >>= dynamicLogString >>= xmonadPropLog
-
-main = do 
---spawn "xmobar ~/.xmonad/xmobarcc"
-	xmonad $ withUrgencyHook NoUrgencyHook $ xfceConfig {
-	workspaces = myWorkspaces,
-	logHook = myLogHook >> logHook desktopConfig >> updatePointer (0.5, 0.5) (0, 0),
-	modMask = mod4Mask,
-	layoutHook = myLayout,
-	manageHook = myManageHook <+> fullscreenManageHook <+> manageHook xfceConfig,
-	startupHook = do
-		setWMName "LG3D"
-	--	spawn "xsetroot -cursor_name left_ptr"
-		spawnOnce "sleep 10 && /usr/local/bin/xmobar -x 0 ~/.xmonad/xmobarcc"
-		spawnOnce "sleep 12 && /usr/local/bin/trayer-srg --edge bottom --align right --SetDockType true --SetPartialStrut true --expand true --width 6 --transparent true --alpha 0 --tint 0x000000 --height 16 --monitor 0"
-		spawnOnce "sleep 12 && /usr/bin/nm-applet"
-       } `additionalKeysP` myKeys
-
-myLayout = smartBorders $ workspaceLayouts
-tiledLayout   = ResizableTall nmaster delta ratio []
+myLogHook = workspaceNamesPP xmobarPP{ppUrgent = xmobarColor "purple" "" . wrap "<" ">", ppHidden = xmobarColor "gray" "" . noScratchPad, ppHiddenNoWindows = const "", ppOrder = \(ws:_:t:_) -> [ws,t] } >>= dynamicLogString >>= xmonadPropLog
   where
-     nmaster = 1
-     ratio = toRational (2/(1 + sqrt 5 :: Double))
-     delta   = 3/100
+    noScratchPad ws = if ws == "NSP" then "" else ws
 
-workspaceLayouts =
-  onWorkspace "1:www" webLayouts $
-  onWorkspace "5:chat" chatLayouts $
-  onWorkspace "4:vm" vmLayouts $
-  onWorkspace "6:grid" gridLayouts $
-  onWorkspace "7:float" floatLayouts $
-  onWorkspace "8:tabbed" gameLayouts $
-  onWorkspace "9:graphics" gimpLayouts $
-  defaultLayouts
+myWorkspaces = ["1:www","2:mail","3:shell","4:vm","5:chat","6:grid","7:float","8:tabbed","9:graphics"]
+
+myStartupHook = do
+  setWMName "LG3D"
+
+defaultLayouts = avoidStruts ( Circle ||| tiled ||| tabbed ||| (gaps [(U,4), (D,4), (L,4), (R,4)] $ spacing 8 $ ThreeColMid 1 (20/100) (56/100)) )
   where
-    tabbedLayout = tabbedBottomAlways shrinkText defaultTheme
-    floatLayouts = desktopLayoutModifiers $ simplestFloat ||| Full
-    gimpLayouts = desktopLayoutModifiers $ minimize $ withIM (1/6) (Role "gimp-toolbox") $ reflectHoriz $ withIM (1/7) (Role "gimp-dock") (trackFloating $ tabbedBottomAlways shrinkText defaultTheme)
-    webLayouts = desktopLayoutModifiers $ minimize $ Mirror tiledLayout ||| tiledLayout ||| Circle ||| tabbedLayout ||| noBorders Full
+    tabbed = tabbedBottomAlways shrinkText def
+    tiled   = spacing 0 $ ResizableTall nmaster delta ratio []
+    nmaster = 1
+    ratio = toRational (2/(1 + sqrt 5 :: Double))
+    delta = 3/100
 
-    chatLayouts = desktopLayoutModifiers $ minimize $ GridRatio (4/3) ||| tiledLayout ||| Mirror tiledLayout ||| tabbedLayout
-    skypeLayouts = skypeLayout ||| tabbedLayout
-    gameLayouts = tabbedLayout ||| Full
-    vmLayouts = defaultLayouts
-    gridLayouts = desktopLayoutModifiers $ minimize $ Grid ||| magnifiercz' 1.4 ( Grid )
-    defaultLayouts = desktopLayoutModifiers $ minimize $ tiledLayout ||| Mirror tiledLayout ||| tabbedLayout ||| Circle ||| Grid ||| (limitWindows 3 $ magnifiercz' 1.4 $ Mirror (Tall 1 (3/100) (2/3))) ||| noBorders Full
+myLayouts = lessBorders OnlyScreenFloat $
+            smartBorders $
+            borderResize $
+            minimize $ maximize $
+            mkToggle (NOBORDERS ?? FULL ?? EOT) .
+            mkToggle (single NBFULL) .
+            mkToggle (single MIRROR) $
+            defaultLayouts
 
-    imLayout = withIM (1/6) (Or (Title "Buddy List")
-                                (Title "Buddy List")) Grid
+main = xmonad
+    $ docks
+    $ withUrgencyHook dzenUrgencyHook {args = ["-bg", "darkgreen", "-xs", "1"], duration = 5000000 }
+    $ withUrgencyHookC BorderUrgencyHook { urgencyBorderColor = "#ff0000" } urgencyConfig { suppressWhen = XMonad.Hooks.UrgencyHook.Focused }
+    $ xfceConfig
+    { borderWidth        = 2
+    , terminal           = "urxvt"
+    , normalBorderColor  = "#cccccc"
+    , focusedBorderColor = "#cd8b00" 
+    , modMask = mod4Mask
+    , workspaces = myWorkspaces
+    , manageHook = myManageHook <+> namedScratchpadManageHook myScratchPads <+> manageDocks <+> fullscreenManageHook <+> manageHook xfceConfig
+    , logHook = myLogHook >> logHook xfceConfig >> updatePointer(0.5, 0.5) (0, 0)
+    , startupHook = myStartupHook
+    , layoutHook = myLayouts
+    , handleEventHook = fullscreenEventHook
+    } `additionalKeysP` myKeys
 
-    skypeLayout = desktopLayoutModifiers $ withIM (1/6) skypeMainWindow Grid
-    skypeMainWindow  = (ClassName "Skype") `And`
-              (Not (Title "Options")) `And`
-              (Not (Role "Chats"))    `And`
-              (Not (Role "CallWindow"))    `And`
-              (Not (Role "ConversationsWindow"))
+myScratchPads = [
+    NS "xterm" "xterm -xrm 'XTerm.vt100.allowTitleOps: false' -T scratchterm1" (title =? "scratchterm1") (customFloating $ W.RationalRect 0 0 1 (1/3))
+   ,NS "music" "xterm -xrm 'XTerm.vt100.allowTitleOps: false' -T ncmpcpp_player -e ncmpcpp" (title =? "ncmpcpp_player") (customFloating $ W.RationalRect 0 0 (2/5) (1/3))
+   ,NS "netflix" "firefox --kiosk --class netflix -P netflix --no-remote --new-window https://www.netflix.com" (className =? "netflix") (customFloating $ W.RationalRect (3/4) 0 (1/4) (1/4))
+   ]
 
+--curLayout :: X String
+--curLayout = gets windowset >>= return . description . W.layout . W.workspace . W.current
 currentLayoutName = dynamicLogString defaultPP { ppOrder= \(_:l:_:_) -> [l] }
 myKeys = [
---For use with resizeable tall
-      ("M-z", sendMessage MirrorShrink),
-      ("M-a", sendMessage MirrorExpand),
---For use with Minimize      
-      ("M-m", withFocused minimizeWindow),
-      ("M-S-m", sendMessage RestoreNextMinimizedWin),
---For use with LayoutCombinator
-      ("M-f", sendMessage $ JumpToLayout "Full")
-
---For use with ActionsCopyWindow
---      ("M-v", windows copyToAll),
---      ("M-S-v", killAllOtherCopies)
     ] 
-
---Allow a workspace to span multiple monitors
-    ++ [  ("M-x", rescreen), ("M-S-x", layoutScreens 2 $ desktopLayoutModifiers (fixedLayout [Rectangle 2400 840 1920 1080, Rectangle 0 0 2400 1920 ]) ) ]
-    ++ [  ("M-C-x", layoutSplitScreen 2 $ desktopLayoutModifiers (TwoPane 0.5 0.5) ) ]
-
-
---Switch layout and print out name of layout
-    ++ [ ("M-S-<Space>",  sendMessage NextLayout >> (currentLayoutName >>= \d->spawn $"notify-send -u low -t 300 "++d)) ]
+--For use with Minimize      
+    ++ [  ("M-m", withFocused minimizeWindow <+> windows W.focusDown)
+         ,("M-S-m", withLastMinimized maximizeWindowAndFocus)
+         ,("M-C-m", withFocused (sendMessage . maximizeRestore))
+    ]
 
 --Bind the wer keys to the correct screen
     ++ [ (mask ++ "M-" ++ [key], screenWorkspace scr >>= flip whenJust (windows . action))
@@ -174,5 +132,24 @@ myKeys = [
          , (action, mask) <- [ (W.view, "") , (W.shift, "S-")]
     ]
 --Swap workspace positions
---    ++ [ ("M-C-" ++ [k], windows $ swapWithCurrent i) | (i, k) <- zip myWorkspaces "123456789"]
     ++ [ ("M-C-" ++ [k], swapWithCurrent i) | (i, k) <- zip myWorkspaces "123456789"]
+
+--Toggle layout properties
+    ++ [ ("M-f", sendMessage $ XMonad.Layout.MultiToggle.Toggle NBFULL)
+        ,("M-C-f", sendMessage $ XMonad.Layout.MultiToggle.Toggle FULL)
+        ,("M-C-S-m", sendMessage $ XMonad.Layout.MultiToggle.Toggle MIRROR)
+       ]
+--Scratchpads
+    ++ [
+         ("M-C-i", namedScratchpadAction myScratchPads "music")
+        ,("M-C-o", namedScratchpadAction myScratchPads "netflix")
+       ]
+    ++ [
+         ("M-b", sendMessage ToggleStruts)
+       ]
+    ++ [
+         ("<F12>", namedScratchpadAction myScratchPads "xterm")
+       ]
+    ++ [
+         ("M-<Space>", sendMessage NextLayout >> (currentLayoutName >>= \d->spawn $ printf "echo %s | dzen2 -bg darkgreen -xs 1 -p 1" d))
+       ]

@@ -1,4 +1,4 @@
-Config { font = "xft:inconsolata:size=10:antialias=true"
+Config { font = "xft:inconsolata:size=9:antialias=true"
 , bgColor = "black"
 , fgColor = "grey"
 , position = Bottom
@@ -40,7 +40,7 @@ Config { font = "xft:inconsolata:size=10:antialias=true"
               600
               "bat1"
              , Run Date "%a %b %_d %Y %H:%M:%S" "date" 10
-	     , Run DiskIO [("sda2", "<total>")] [] 10
+	     , Run DiskIO [("/", "IO: <total>"), ("/nvme0n1p2", "<total>")] [] 10
              , Run XMonadLog
              , Run Com "/usr/local/bin/trayer-width-to-spaces" [] "trayer" 10
 	     , Run MultiCpu      [ "--template" , "Cpu: <total0>%|<total1>%|<total2>%|<total3>%"
